@@ -56,11 +56,29 @@ async def handler(event):
 
         # رسائل ميديا
         elif event.message.media:
+            current_text = event.message.text.strip() if event.message.text else ""
+            is_duplicate = any(are_similar(current_text, prev) for prev in recent_messages)
+
+            repeated_note = ""
+            if is_duplicate:
+                repeated_note = "\n🔁 <b><u>تنويه:</u></b> <i>هذا الخبر مشابه لخبر سابق</i> ❗"
+
+            full_caption = f"{caption}{repeated_note}"
+            if current_text:
+                full_caption += f"\n\n{current_text}"
+
             await client.send_file(
                 target_channel,
                 file=event.message.media,
-                caption=caption
+                caption=full_caption,
+                parse_mode='html'
             )
+
+            # أضف النص للقائمة في حال وجد
+            if current_text:
+                recent_messages.append(current_text)
+                if len(recent_messages) > 1000:
+                    recent_messages.pop(0)
             
         print(f"✅ نُقلت رسالة من {display_name}")
 
