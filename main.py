@@ -50,12 +50,7 @@ async def handler(event):
 
             msg_to_send = f"{caption}{repeated_note}\n\n{escaped_text}"
 
-await
-
-client.send_message(target_channel, msg_to_send, parse_mode='html')
-            msg_to_send = f"{caption}{repeated_note}\n\n{current_text}"
             await client.send_message(target_channel, msg_to_send, parse_mode='html')
-
             # أضف الرسالة الجديدة للقائمة
             recent_messages.append(current_text)
             if len(recent_messages) > 1000:
