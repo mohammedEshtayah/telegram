@@ -64,11 +64,10 @@ async def handler(event):
             repeated_note = ""
             if is_duplicate:
                 repeated_note = "\n🔁 <b><u>تنويه:</u></b> <i>هذا الخبر مشابه لخبر سابق</i> ❗"
-
             full_caption = f"{caption}{repeated_note}"
             if current_text:
                 escaped_text = html.escape(current_text)
-                msg_to_send = f"{caption}{repeated_note}\n\n{escaped_text}"
+                full_caption = f"{caption}{repeated_note}\n\n{escaped_text}"
 
             await client.send_file(
                 target_channel,
