@@ -1,5 +1,6 @@
 from telethon import TelegramClient, events
 import difflib
+import html
 
 api_id = 24557011 
 api_hash = 'a39d7a9cad2e5f14914bef052e1b2971'  
@@ -45,7 +46,13 @@ async def handler(event):
             repeated_note = ""
             if is_duplicate:
                 repeated_note = "\n🔁 <b><u>تنويه:</u></b> <i>هذا الخبر مشابه لخبر سابق</i> ❗"
+            escaped_text = html.escape(current_text)
 
+            msg_to_send = f"{caption}{repeated_note}\n\n{escaped_text}"
+
+await
+
+client.send_message(target_channel, msg_to_send, parse_mode='html')
             msg_to_send = f"{caption}{repeated_note}\n\n{current_text}"
             await client.send_message(target_channel, msg_to_send, parse_mode='html')
 
@@ -65,7 +72,8 @@ async def handler(event):
 
             full_caption = f"{caption}{repeated_note}"
             if current_text:
-                full_caption += f"\n\n{current_text}"
+                escaped_text = html.escape(current_text)
+                msg_to_send = f"{caption}{repeated_note}\n\n{escaped_text}"
 
             await client.send_file(
                 target_channel,
