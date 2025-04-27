@@ -114,7 +114,7 @@ async def forward_handler(event):
             if f"{event.message.grouped_id}" not in dic_count_group:
                 dic_count_group[f"{event.message.grouped_id}"] = 1 
 
-            if  dic_count_group[f"{event.message.grouped_id}"] <= 1:
+            if  dic_count_group[f"{event.message.grouped_id}"] == 1:
                 files = []
                 for msg in media_group:
                     if msg.media:
