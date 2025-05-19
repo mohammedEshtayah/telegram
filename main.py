@@ -226,4 +226,5 @@ async def main():
     print("🤖 البوت شغال، براقب القنوات...")
     await client.run_until_disconnected()
 
+
 client.loop.run_until_complete(main())
