@@ -20,8 +20,8 @@ async def handle_ask(pipeline: Any, event) -> None:
     me = await event.client.get_me()
     allowed_chat_ids = {me.id, pipeline.target_channel, pipeline.target_channel_streets}
 
-    cmd_dup = re.match(r"^/dup\s*$", t, re.I)
-    cmd_undeplh = re.match(r"^/undeplh\s*$", t, re.I)
+    cmd_dup = re.match(r"^/d\s*$", t, re.I)
+    cmd_undeplh = re.match(r"^/und\s*$", t, re.I)
     if cmd_dup or cmd_undeplh:
         if event.chat_id not in allowed_chat_ids:
             log("dup_toggle", "fail", f"chat_id not allowed: {event.chat_id}")
@@ -32,13 +32,13 @@ async def handle_ask(pipeline: Any, event) -> None:
         if cmd_dup:
             pipeline.forward_duplicate_messages = True
             await event.reply(
-                "/dup: duplicate posts will be forwarded like any other message."
+                "/d: duplicate posts will be forwarded like any other message."
             )
             log("dup_toggle", "ok", "forward_duplicate_messages=True")
         else:
             pipeline.forward_duplicate_messages = False
             await event.reply(
-                "/undeplh: duplicate posts will not be forwarded (skipped)."
+                "/und: duplicate posts will not be forwarded (skipped)."
             )
             log("dup_toggle", "ok", "forward_duplicate_messages=False")
         return
