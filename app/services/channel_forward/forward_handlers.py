@@ -55,7 +55,7 @@ async def forward_to_main(pipeline: Any, event, chat) -> None:
         print(f"⏭️ Skipped duplicate from {display_name}")
         return
 
-    full_caption = f"<b> 📢 {display_name}</b>\n"
+    full_caption = f"<b> 📢 {display_name}</b> \n\n"
     full_caption += await caption.clean_message_text(pipeline, event, tgt)
 
     if event.message.grouped_id:
