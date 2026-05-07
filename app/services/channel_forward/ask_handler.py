@@ -56,7 +56,12 @@ async def handle_ask(pipeline: Any, event) -> None:
     if not rest:
         await event.reply(
             "Usage: /ask followed by your question.\n"
-            "Example: /ask What are the latest stored items about Gaza?\n"
+            "Examples:\n"
+            "• /ask What are the latest stored items about Gaza?\n"
+            "• /ask لخصّلي أحداث أمس\n"
+            "• /ask اليوم من الصباح حتى الظهر ماذا حدث؟\n"
+            "• /ask خلال ساعتين ما بين 2 و 4 ماذا حدث؟\n"
+            "Time phrases use ASK_TIMEZONE in .env (default Asia/Jerusalem).\n"
             "Works in Saved Messages or allowed channels."
         )
         log("ask_from_archive", "info", "no rest")

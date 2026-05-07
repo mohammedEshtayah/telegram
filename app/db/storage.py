@@ -6,6 +6,7 @@ import sqlite3
 import unicodedata
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from typing import Optional
 
 from app.config.settings import NEWS_DB_PATH
 from app.shared.logger import build_logger
@@ -106,15 +107,35 @@ def _query_terms(q: str) -> list[str]:
     return list(dict.fromkeys(words))
 
 
-def search_relevant(query: str, limit: int = 40) -> list[dict]:
+def search_relevant(
+    query: str,
+    limit: int = 40,
+    *,
+    window_start_utc: Optional[datetime] = None,
+    window_end_utc: Optional[datetime] = None,
+    window_end_exclusive: bool = True,
+) -> list[dict]:
     log("search_relevant", "info", f"limit={limit}")
     terms = _query_terms(query)
     log("search_relevant", "info", f"terms={len(terms)}")
+    conds: list[str] = []
+    params: list = []
+    if window_start_utc is not None:
+        ws = window_start_utc.astimezone(timezone.utc).replace(microsecond=0).isoformat()
+        conds.append("created_at >= ?")
+        params.append(ws)
+    if window_end_utc is not None:
+        we = window_end_utc.astimezone(timezone.utc).replace(microsecond=0).isoformat()
+        conds.append("created_at < ?" if window_end_exclusive else "created_at <= ?")
+        params.append(we)
+    where = (" WHERE " + " AND ".join(conds)) if conds else ""
+    params.append(_SCAN_LAST_ROWS)
+    sql = (
+        "SELECT id, text, source, stream, created_at FROM news"
+        f"{where} ORDER BY id DESC LIMIT ?"
+    )
     with _db() as conn:
-        cur = conn.execute(
-            "SELECT id, text, source, stream, created_at FROM news ORDER BY id DESC LIMIT ?",
-            (_SCAN_LAST_ROWS,),
-        )
+        cur = conn.execute(sql, params)
         rows = cur.fetchall()
     log("search_relevant", "ok", f"rows_scanned={len(rows)}")
 

@@ -137,12 +137,12 @@ async def forward_to_streets(pipeline: Any, event, chat) -> None:
     tgt = pipeline.target_channel_streets
 
     is_dup = bool(src_plain) and pipeline.duplicate_match(src_plain, tgt) is not None
-    skip_dup = is_dup and not pipeline.forward_duplicate_messages
+    #skip_dup = is_dup and not pipeline.forward_duplicate_messages
 
-    if skip_dup and not event.message.grouped_id:
-        log("forward_handler_Streets", "info", "skip duplicate (single)")
-        print(f"⏭️ Skipped duplicate from {display_name} (streets)")
-        return
+    #if skip_dup and not event.message.grouped_id:
+    #    log("forward_handler_Streets", "info", "skip duplicate (single)")
+    #    print(f"⏭️ Skipped duplicate from {display_name} (streets)")
+    #    return
 
     full_caption = await caption.clean_message_text(pipeline, event, tgt)
 

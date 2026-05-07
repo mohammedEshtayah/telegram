@@ -1,18 +1,41 @@
 """Build LLM context and chat messages from retrieved news rows."""
 
-from typing import List
+from datetime import datetime, timezone
+from typing import List, Optional
+
+from zoneinfo import ZoneInfo
 
 from .config import MAX_CONTEXT_CHARS
 
 
-def format_context(chunks: List[dict]) -> str:
+def _format_saved_at(iso: str, tz_name: Optional[str]) -> str:
+    if not (iso or "").strip():
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return iso
+    if tz_name:
+        try:
+            local = dt.astimezone(ZoneInfo(tz_name))
+            return local.strftime("%Y-%m-%d %H:%M %Z")
+        except Exception:
+            pass
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+
+def format_context(chunks: List[dict], tz_name: Optional[str] = None) -> str:
     parts: List[str] = []
     n = 0
     for ch in chunks:
         n += 1
         src = ch.get("source") or "unknown"
+        when = _format_saved_at(ch.get("created_at") or "", tz_name)
         body = (ch.get("text") or "").strip()
-        parts.append(f"--- [item {n} | source: {src}]\n{body}\n")
+        head = f"--- [item {n} | source: {src}"
+        if when:
+            head += f" | saved: {when}"
+        parts.append(f"{head}]\n{body}\n")
     return "\n".join(parts)[:MAX_CONTEXT_CHARS]
 
 

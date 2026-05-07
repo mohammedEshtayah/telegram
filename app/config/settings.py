@@ -24,6 +24,9 @@ else:
 
 NEWS_DB_PATH = os.getenv("NEWS_DB_PATH", os.path.join(DB_DIR, "news.db"))
 
+# IANA timezone for interpreting /ask phrases like "yesterday" and "between 2 and 4".
+ASK_TIMEZONE = os.getenv("ASK_TIMEZONE", "Asia/Jerusalem")
+
 TARGET_CHANNEL_MAIN = -1002584913687
 TARGET_CHANNEL_STREETS = -1002692513965
 
