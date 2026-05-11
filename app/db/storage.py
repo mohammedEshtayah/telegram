@@ -10,7 +10,9 @@ from typing import Optional
 
 from app.config.settings import NEWS_DB_PATH
 from app.shared.logger import build_logger
-from app.utils.telegram_text import strip_known_noise
+from app.utils.news_text_normalize import normalize_news_plain
+
+_STREAM_TABLES = {"main": "news_main", "streets": "news_streets"}
 
 log = build_logger("DB")
 MAX_STORE_CHARS = 12000
@@ -27,21 +29,65 @@ def _db():
         conn.close()
 
 
-def init_db() -> None:
-    log("init_db", "info", f"path={NEWS_DB_PATH}")
-    with _db() as conn:
+def _ensure_stream_tables(conn: sqlite3.Connection) -> None:
+    for logical, physical in _STREAM_TABLES.items():
         conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS news (
+            f"""
+            CREATE TABLE IF NOT EXISTS {physical} (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 text TEXT NOT NULL,
                 source TEXT,
-                stream TEXT,
                 created_at TEXT NOT NULL
             );
             """
         )
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_news_id ON news(id);")
+        conn.execute(
+            f"CREATE INDEX IF NOT EXISTS idx_{physical}_created ON {physical}(created_at DESC);"
+        )
+
+
+def _migrate_legacy_news_table(conn: sqlite3.Connection) -> None:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='news'"
+    ).fetchone()
+    if not row:
+        return
+    log("init_db", "info", "migrating legacy table news -> news_main / news_streets")
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(news)").fetchall()}
+    has_stream = "stream" in cols
+    if has_stream:
+        legacy_rows = conn.execute(
+            "SELECT text, source, stream, created_at FROM news"
+        ).fetchall()
+    else:
+        legacy_rows = conn.execute(
+            "SELECT text, source, created_at FROM news"
+        ).fetchall()
+    for r in legacy_rows:
+        created_at = r["created_at"]
+        source = r["source"]
+        text = normalize_news_plain(r["text"] or "")
+        if len(text) < 5:
+            continue
+        if has_stream:
+            stream = (r["stream"] or "main").lower()
+        else:
+            stream = "main"
+        table = _STREAM_TABLES.get(stream, "news_main")
+        conn.execute(
+            f"INSERT INTO {table} (text, source, created_at) VALUES (?, ?, ?)",
+            (text, (source or "")[:500], created_at),
+        )
+    conn.execute("DROP TABLE news")
+    conn.commit()
+    log("init_db", "ok", "legacy news migrated")
+
+
+def init_db() -> None:
+    log("init_db", "info", f"path={NEWS_DB_PATH}")
+    with _db() as conn:
+        _ensure_stream_tables(conn)
+        _migrate_legacy_news_table(conn)
         conn.commit()
     log("init_db", "ok", "tables/index ready")
 
@@ -59,7 +105,11 @@ def html_to_plain(s: str) -> str:
 
 def persist_from_caption(caption_html: str, source: str, stream: str) -> None:
     log("persist_from_caption", "info", f"source={source} stream={stream}")
-    plain = strip_known_noise(html_to_plain(caption_html))
+    table = _STREAM_TABLES.get((stream or "").strip().lower())
+    if not table:
+        log("persist_from_caption", "fail", f"unknown stream={stream!r}")
+        return
+    plain = normalize_news_plain(html_to_plain(caption_html))
     if len(plain) < 5:
         log("persist_from_caption", "fail", "caption too short")
         return
@@ -68,11 +118,11 @@ def persist_from_caption(caption_html: str, source: str, stream: str) -> None:
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     with _db() as conn:
         conn.execute(
-            "INSERT INTO news (text, source, stream, created_at) VALUES (?, ?, ?, ?)",
-            (plain, (source or "")[:500], (stream or "")[:64], now),
+            f"INSERT INTO {table} (text, source, created_at) VALUES (?, ?, ?)",
+            (plain, (source or "")[:500], now),
         )
         conn.commit()
-    log("persist_from_caption", "ok", f"saved_chars={len(plain)}")
+    log("persist_from_caption", "ok", f"saved_chars={len(plain)} table={table}")
 
 
 _AR_WORD = re.compile(r"[\u0600-\u06FFa-zA-Z0-9_]+", re.UNICODE)
@@ -129,10 +179,15 @@ def search_relevant(
         conds.append("created_at < ?" if window_end_exclusive else "created_at <= ?")
         params.append(we)
     where = (" WHERE " + " AND ".join(conds)) if conds else ""
+    union_sql = (
+        "SELECT id, text, source, 'main' AS stream, created_at FROM news_main "
+        "UNION ALL "
+        "SELECT id, text, source, 'streets' AS stream, created_at FROM news_streets"
+    )
     params.append(_SCAN_LAST_ROWS)
     sql = (
-        "SELECT id, text, source, stream, created_at FROM news"
-        f"{where} ORDER BY id DESC LIMIT ?"
+        f"SELECT id, text, source, stream, created_at FROM ({union_sql}) AS archived"
+        f"{where} ORDER BY created_at DESC, id DESC LIMIT ?"
     )
     with _db() as conn:
         cur = conn.execute(sql, params)

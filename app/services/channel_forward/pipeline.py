@@ -7,6 +7,8 @@ from typing import Any
 
 from telethon import TelegramClient, events
 
+from app.utils.news_text_normalize import normalize_news_plain
+
 from app.config.settings import (
     SOURCE_CHANNELS,
     TARGET_CHANNEL_MAIN,
@@ -14,7 +16,6 @@ from app.config.settings import (
 )
 
 from . import ask_handler, forward_handlers
-
 
 class ChannelForwardPipeline:
     """Register with ``register()`` on a Telethon client."""
@@ -25,32 +26,38 @@ class ChannelForwardPipeline:
         self.target_channel_streets = TARGET_CHANNEL_STREETS
         self.source_channels = SOURCE_CHANNELS
 
+        # Recent entries for duplicate check.
         self.dic_count_group: dict[str, int] = {}
+        # Message text for group duplicate check.
         self.dic_message: dict[str, str] = {}
-        self.dic_group_dup_confirm: dict[str, bool] = {}
+        # Recent entries for duplicate check.
         self.recent_entries: list[dict[str, Any]] = []
-        # Default: skip forwards when body matches a recent post on the same target.
-        # /dup allows forwarding duplicates; /undeplh turns skipping back on.
+        
+        # Duplicate check settings.
         self.forward_duplicate_messages: bool = False
 
     def duplicate_match(
         self, text: str, target_chat_id: int, threshold: float = 0.8
     ) -> dict | None:
+        key = normalize_news_plain(text or "")
+        if not key:
+            return None
         for entry in reversed(self.recent_entries):
             if entry.get("target_chat_id") != target_chat_id:
                 continue
             prev = entry.get("text") or ""
-            if difflib.SequenceMatcher(None, text, prev).ratio() >= threshold:
+            if difflib.SequenceMatcher(None, key, prev).ratio() >= threshold:
                 return entry
         return None
 
     def add_to_recent(
-        self, text: str, target_chat_id: int, msg_id: int, limit: int = 500
+        self, text: str, target_chat_id: int, msg_id: int, limit: int = 1500
     ) -> None:
-        if not text or msg_id is None:
+        nt = normalize_news_plain(text or "")
+        if not nt or msg_id is None:
             return
         self.recent_entries.append(
-            {"text": text, "target_chat_id": target_chat_id, "msg_id": int(msg_id)}
+            {"text": nt, "target_chat_id": target_chat_id, "msg_id": int(msg_id)}
         )
         while len(self.recent_entries) > limit:
             self.recent_entries.pop(0)
@@ -63,6 +70,7 @@ class ChannelForwardPipeline:
 
     def register(self) -> None:
         self.client.add_event_handler(self._on_ask, events.NewMessage())
+        # Only messages originating from SOURCE_CHANNELS (see settings); each update is handled.
         self.client.add_event_handler(
             self._on_forward,
             events.NewMessage(chats=self.source_channels),

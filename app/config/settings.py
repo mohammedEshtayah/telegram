@@ -30,6 +30,8 @@ ASK_TIMEZONE = os.getenv("ASK_TIMEZONE", "Asia/Jerusalem")
 TARGET_CHANNEL_MAIN = -1002584913687
 TARGET_CHANNEL_STREETS = -1002692513965
 
+# Every chat id here is subscribed via Telethon `NewMessage(chats=...)`: any new post
+# from these channels/groups triggers forward + duplicate + archive (not other dialogs).
 SOURCE_CHANNELS = [
     -1001307326930,
     -1001253130437,

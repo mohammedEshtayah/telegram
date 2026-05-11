@@ -32,7 +32,10 @@ def format_context(chunks: List[dict], tz_name: Optional[str] = None) -> str:
         src = ch.get("source") or "unknown"
         when = _format_saved_at(ch.get("created_at") or "", tz_name)
         body = (ch.get("text") or "").strip()
+        stream = (ch.get("stream") or "").strip()
         head = f"--- [item {n} | source: {src}"
+        if stream:
+            head += f" | stream: {stream}"
         if when:
             head += f" | saved: {when}"
         parts.append(f"{head}]\n{body}\n")

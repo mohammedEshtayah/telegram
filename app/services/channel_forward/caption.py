@@ -5,7 +5,7 @@ from __future__ import annotations
 import html
 from typing import Any
 
-from app.utils.telegram_text import strip_known_noise
+from app.utils.news_text_normalize import normalize_news_plain, strip_known_noise
 
 from .constants import MAX_DUP_EMBED_CHARS
 from .log import log
@@ -34,7 +34,7 @@ async def clean_message_text(pipeline: Any, event, target_chat_id: int) -> str:
     if message_text and pipeline.forward_duplicate_messages:
         match = pipeline.duplicate_match(message_text, target_chat_id)
         if match:
-            prev = strip_known_noise(match.get("text") or "")
+            prev = normalize_news_plain(match.get("text") or "")
             if len(prev) > MAX_DUP_EMBED_CHARS:
                 prev = prev[:MAX_DUP_EMBED_CHARS].rstrip() + "\n..."
             log("clean_message_text", "ok", "compact_duplicate_confirm")
@@ -47,8 +47,7 @@ async def clean_message_text(pipeline: Any, event, target_chat_id: int) -> str:
             reply_txt = replied_msg.text.strip()
             escaped_reply = html.escape(reply_txt + "\n=====>")
             full_caption += (
-                f"<blockquote>🧾 <b>Reply to:</b></blockquote>\n"
-                f"<pre>{escaped_reply}</pre>"
+                f"<blockquote>🧾 <b>Reply to: \n {escaped_reply}</b></blockquote>\n"
             )
     if message_text:
         full_caption += f"\n{html.escape(message_text)}"
