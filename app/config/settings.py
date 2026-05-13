@@ -22,6 +22,10 @@ if os.path.isabs(_SESSION_RAW) or ("/" in _SESSION_RAW) or ("\\" in _SESSION_RAW
 else:
     SESSION_NAME = os.path.join(SESSIONS_DIR, _SESSION_RAW)
 
+# Optional: paste a Telethon StringSession (generate on your PC where SMS works).
+# On cloud VPSs Telegram often does not deliver login SMS; use this instead of interactive login.
+TELEGRAM_STRING_SESSION = (os.getenv("TELEGRAM_STRING_SESSION") or "").strip() or None
+
 NEWS_DB_PATH = os.getenv("NEWS_DB_PATH", os.path.join(DB_DIR, "news.db"))
 
 # IANA timezone for interpreting /ask phrases like "yesterday" and "between 2 and 4".

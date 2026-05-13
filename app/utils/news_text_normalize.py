@@ -6,7 +6,7 @@ import re
 import unicodedata
 
 # Arabic “breaking” label often prepended to headlines.
-_URGENT_MARKER = "عاجل"
+_URGENT_MARKER = "عاجل#"
 
 # Channel watermark hashtag as Unicode escapes (ASCII-only source).
 _NOISE_HASHTAG = (

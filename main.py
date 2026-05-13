@@ -2,8 +2,15 @@
 
 from telethon import TelegramClient
 from telethon.errors.rpcerrorlist import AuthKeyDuplicatedError
+from telethon.sessions import StringSession
 
-from app.config.settings import API_HASH, API_ID, PHONE, SESSION_NAME
+from app.config.settings import (
+    API_HASH,
+    API_ID,
+    PHONE,
+    SESSION_NAME,
+    TELEGRAM_STRING_SESSION,
+)
 from app.db.storage import init_db
 from app.services.channel_forward_service import ChannelForwardPipeline, print_dialogs_snapshot
 
@@ -12,7 +19,11 @@ async def run_pipeline(client: TelegramClient) -> None:
     ChannelForwardPipeline(client).register()
 
     try:
-        await client.start(PHONE)
+        # String session: already logged in — no SMS on server (datacenter IPs often never get SMS).
+        if TELEGRAM_STRING_SESSION:
+            await client.start()
+        else:
+            await client.start(PHONE)
     except AuthKeyDuplicatedError:
         print(
             "❌ Telethon session is invalid (AuthKeyDuplicatedError).\n"
@@ -30,5 +41,10 @@ async def run_pipeline(client: TelegramClient) -> None:
 
 
 if __name__ == "__main__":
-    _client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
+    _session = (
+        StringSession(TELEGRAM_STRING_SESSION)
+        if TELEGRAM_STRING_SESSION
+        else SESSION_NAME
+    )
+    _client = TelegramClient(_session, API_ID, API_HASH)
     _client.loop.run_until_complete(run_pipeline(_client))
